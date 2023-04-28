@@ -7,16 +7,17 @@ import shutil
 import subprocess
 import sys
 from typing import Dict, Generator, List, TextIO, Union
-
 import jsonlines
-from tqdm import tqdm
-
+from joblib import Parallel, delayed
 
 DATA_SPLITS = ["development", "test", "train"]
 DEPS_FILENAME = "deps.conllu"
 DEPS_IDX_FILENAME = "deps.index"
 DEP_SENT_PATTERN = re.compile(r"(?:^\d.+$\n?)+", flags=re.M)
 SENT_PATTERN = re.compile(r"(?:^(?:\w+\/){3}.+$\n?)+", flags=re.M)
+
+# 并行处理数据的核心数量，适当调整，默认-1使用所有核心
+N_JOBS = -1
 
 
 class CorefSpansHolder:
@@ -29,6 +30,7 @@ class CorefSpansHolder:
 
     Both dictionaries use entity indices as keys.
     """
+
     def __init__(self):
         self.starts = defaultdict(lambda: [])
         self.spans = defaultdict(lambda: [])
@@ -75,9 +77,9 @@ def build_jsonlines(data_dir: str,
     fidx = open(os.path.join(tmp_dir, DEPS_IDX_FILENAME),
                 mode="r", encoding="utf8")
     out = {split_type: jsonlines.open(
-            os.path.join(out_dir, f"english_{split_type}.jsonlines"),
-            mode="w", compact=True
-            ) for split_type in DATA_SPLITS}
+        os.path.join(out_dir, LANG + f"_{split_type}.jsonlines"),
+        mode="w", compact=True
+    ) for split_type in DATA_SPLITS}
 
     # This here is memory-unfriendly, but should be fine for most
     with open(os.path.join(tmp_dir, DEPS_FILENAME),
@@ -116,24 +118,33 @@ def build_one_jsonline(filename: str,
     """
     with open(filename, mode="r", encoding="utf8") as f:
         sents = re.findall(SENT_PATTERN, f.read())
-        assert len(sents) == len(parsed_sents)
+        try:
+            assert len(sents) == len(parsed_sents)
+        except Exception as e:
+            print(f"filename: {filename}")
+            raise e
 
     data = {
-        "document_id":      None,
-        "cased_words":      [],
-        "sent_id":          [],
-        "part_id":          [],
-        "speaker":          [],
-        "pos":              [],
-        "deprel":           [],
-        "head":             [],
-        "clusters":         []
+        "document_id": None,
+        "cased_words": [],
+        "sent_id": [],
+        "part_id": [],
+        "speaker": [],
+        "pos": [],
+        "deprel": [],
+        "head": [],
+        "clusters": []
     }
     coref_spans = CorefSpansHolder()
     total_words = 0
     for sent_id, sources in enumerate(zip(sents, parsed_sents)):
         sent, parsed_sent = [s.splitlines() for s in sources]
-        assert len(sent) == len(parsed_sent)
+        try:
+            assert len(sent) == len(parsed_sent)
+        except Exception as e:
+            print(e.__str__())
+            print(f"filename: {filename}, sent: {sent}, parsed_sent: {parsed_sent}")
+            continue
 
         for s_word, p_word in zip(sent, parsed_sent):
             s_cols = s_word.split()
@@ -183,17 +194,28 @@ def convert_con_to_dep(temp_dir: str, filenames: Dict[str, List[str]]) -> None:
     consituency trees to Universal Dependencies.
     """
     print("Converting constituents to dependencies...")
-    cmd = ("java -cp downloads/stanford-parser.jar"
-           " edu.stanford.nlp.trees.EnglishGrammaticalStructure"
-           " -basic -keepPunct -conllx -treeFile"
-           " FILENAME").split()
+    if LANG == 'english':
+        cmd = ("java -cp downloads/stanford-parser.jar"
+               " edu.stanford.nlp.trees.EnglishGrammaticalStructure"
+               " -basic -keepPunct -conllx -treeFile"
+               " FILENAME").split()
+    if LANG == 'chinese':
+        cmd = ("java -cp downloads/stanford-parser.jar"
+               " edu.stanford.nlp.trees.international.pennchinese.ChineseGrammaticalStructure"
+               " -basic -keepPunct -conllx -treeFile"
+               " FILENAME").split()
     for data_split, filelist in filenames.items():
-        for filename in tqdm(filelist, ncols=0, desc=data_split, unit="docs"):
-            temp_filename = os.path.join(temp_dir, filename)
-            cmd[-1] = temp_filename
-            with open(temp_filename + "_dep", mode="w") as out:
-                subprocess.run(cmd, check=True, stdout=out)
+
+        Parallel(n_jobs=N_JOBS, verbose=True)(
+            [delayed(convert_single_con_to_dep)(cmd, temp_dir, filename) for filename in filelist])
     print()
+
+
+def convert_single_con_to_dep(cmd, temp_dir, filename):
+    temp_filename = os.path.join(temp_dir, filename)
+    cmd[-1] = temp_filename
+    with open(temp_filename + "_dep", mode="w", encoding='utf8') as out:
+        subprocess.run(cmd, check=True, stdout=out)
 
 
 def extract_trees_from_file(fileobj: TextIO) -> Generator[str, None, None]:
@@ -258,7 +280,7 @@ def get_conll_filenames(data_dir: str, language: str) -> Dict[str, List[str]]:
         conll_filenames[data_split] = [
             filename for filename in get_filenames(data_split_dir)
             if filename.endswith("gold_conll")
-            ]
+        ]
     return conll_filenames
 
 
@@ -279,8 +301,8 @@ def merge_dep_files(temp_dir: str, filenames: Dict[str, List[str]]) -> None:
     Writes the contents of all files in filenames into one file,
     builds its index in a separate file.
     """
-    fout = open(os.path.join(temp_dir, DEPS_FILENAME), mode="w")
-    fidx = open(os.path.join(temp_dir, DEPS_IDX_FILENAME), mode="w")
+    fout = open(os.path.join(temp_dir, DEPS_FILENAME), mode="w", encoding='utf8')
+    fidx = open(os.path.join(temp_dir, DEPS_IDX_FILENAME), mode="w", encoding='utf8')
 
     for filelist in filenames.values():
         for filename in filelist:
@@ -302,12 +324,12 @@ def split_jsonlines(out_dir: str,
     Splitting means separating different parts of the same document into
     multiple jsonlines. """
     to_split = {split_type: jsonlines.open(
-                os.path.join(tmp_dir, f"{language}_{split_type}.jsonlines"),
-                mode="r") for split_type in DATA_SPLITS}
+        os.path.join(tmp_dir, f"{language}_{split_type}.jsonlines"),
+        mode="r") for split_type in DATA_SPLITS}
     out = {split_type: jsonlines.open(
-            os.path.join(out_dir, f"{language}_{split_type}.jsonlines"),
-            mode="w", compact=True
-            ) for split_type in DATA_SPLITS}
+        os.path.join(out_dir, f"{language}_{split_type}.jsonlines"),
+        mode="w", compact=True
+    ) for split_type in DATA_SPLITS}
 
     for split_type, jsonlines_to_split in to_split.items():
         for doc in jsonlines_to_split:
@@ -367,17 +389,19 @@ def split_one_jsonline(doc: dict):
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(
         description="Converts conll-formatted files to json.")
-    argparser.add_argument("conll_dir", help="The root directory of"
-                           " conll-formatted OntoNotes corpus.")
+    argparser.add_argument("--conll-dir", help="The root directory of"
+                                               " conll-formatted OntoNotes corpus.")
     argparser.add_argument("--out-dir", default=".", help="The directory where"
-                           " the output jsonlines will be written.")
+                                                          " the output jsonlines will be written.")
     argparser.add_argument("--tmp-dir", default="temp", help="A directory to"
-                           " keep temporary files in."
-                           " Defaults to 'temp'.")
+                                                             " keep temporary files in."
+                                                             " Defaults to 'temp'.")
     argparser.add_argument("--keep-tmp-dir", action="store_true", help="If set"
-                           ", the temporary directory will not be deleted.")
+                                                                       ", the temporary directory will not be deleted.")
+    argparser.add_argument("--lang", default='english', choices=["english", "chinese"], help="language")
     args = argparser.parse_args()
 
+    LANG = args.lang
     if os.path.exists(args.tmp_dir):
         response = input(f"{args.tmp_dir} already exists!"
                          f" Enter 'yes' to delete it or anything to exit: ")
@@ -387,11 +411,11 @@ if __name__ == "__main__":
 
     os.makedirs(args.tmp_dir)
     data_dir = os.path.join(args.conll_dir, "v4", "data")
-    conll_filenames = get_conll_filenames(data_dir, "english")
+    conll_filenames = get_conll_filenames(data_dir, LANG)
     extract_trees_to_files(args.tmp_dir, conll_filenames)
     convert_con_to_dep(args.tmp_dir, conll_filenames)
     merge_dep_files(args.tmp_dir, conll_filenames)
     build_jsonlines(data_dir, args.tmp_dir, args.tmp_dir)
-    split_jsonlines(args.out_dir, args.tmp_dir)
+    split_jsonlines(args.out_dir, args.tmp_dir, LANG)
     if not args.keep_tmp_dir:
         shutil.rmtree(args.tmp_dir)

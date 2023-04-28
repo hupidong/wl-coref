@@ -1,3 +1,4 @@
+import argparse
 from collections import defaultdict
 import logging
 import os
@@ -5,9 +6,7 @@ from typing import Tuple
 
 import jsonlines
 
-
 DATA_DIR = "data"
-FILENAME = "english_{}{}.jsonlines"
 LOGGING_LEVEL = logging.WARNING  # DEBUG to output all duplicate spans
 SPLITS = ("development", "test", "train")
 
@@ -37,6 +36,12 @@ def get_head(mention: Tuple[int, int], doc: dict) -> int:
 
 if __name__ == "__main__":
     logging.basicConfig(level=LOGGING_LEVEL)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--lang", default='english', choices=['english', 'chinese'])
+    args = parser.parse_args()
+    LANG = args.lang
+    FILENAME = LANG + "_{}{}.jsonlines"
+
     path = os.path.join(DATA_DIR, FILENAME)
     for split in SPLITS:
         with jsonlines.open(path.format(split, ""), mode="r") as inf:
@@ -87,6 +92,6 @@ if __name__ == "__main__":
                     outf.write(doc)
 
                 print(f"Deleted in {split}:"
-                      f"\n\t{deleted_spans}/{total_spans} ({deleted_spans/total_spans:.2%}) spans"
-                      f"\n\t{deleted_clusters}/{total_clusters} ({deleted_clusters/total_clusters:.2%}) clusters"
+                      f"\n\t{deleted_spans}/{total_spans} ({deleted_spans / total_spans:.2%}) spans"
+                      f"\n\t{deleted_clusters}/{total_clusters} ({deleted_clusters / total_clusters:.2%}) clusters"
                       f"\n")

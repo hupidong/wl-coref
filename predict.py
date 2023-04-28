@@ -3,15 +3,35 @@ import argparse
 import jsonlines
 import torch
 from tqdm import tqdm
+from paddlenlp import Taskflow
 
 from coref import CorefModel
 from coref.tokenizer_customization import *
+
+from utils import cut_chinese_sent, replace_invisible_space
+
+segger = Taskflow("word_segmentation", mode="accurate")
 
 
 def build_doc(doc: dict, model: CorefModel) -> dict:
     filter_func = TOKENIZER_FILTERS.get(model.config.bert_model,
                                         lambda _: True)
     token_map = TOKENIZER_MAPS.get(model.config.bert_model, {})
+
+    if not doc.get("cased_words", []):
+        text = replace_invisible_space(doc["text"], "").replace(" ", "")
+        sents = cut_chinese_sent(text)
+        cased_words = []
+        sent_id = []
+        for i, sent in enumerate(sents):
+            # words = jieba.lcut(sent, use_paddle=True)
+            # words = list(sent)
+            words = segger(sent)
+            cased_words.extend(words)
+            sent_id.extend([i] * len(words))
+        doc["cased_words"] = cased_words
+        doc["sent_id"] = sent_id
+        assert len(cased_words) == len(sent_id)
 
     word2subword = []
     subwords = []
@@ -71,6 +91,8 @@ if __name__ == "__main__":
             result = model.run(doc)
             doc["span_clusters"] = result.span_clusters
             doc["word_clusters"] = result.word_clusters
+            doc["string_clusters"] = [["".join(doc["cased_words"][span[0]:span[1]]) for span in cluster] for cluster in
+                                      result.span_clusters]
 
             for key in ("word2subword", "subwords", "word_id", "head2span"):
                 del doc[key]

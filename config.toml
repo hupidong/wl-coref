@@ -115,6 +115,37 @@ bce_loss_weight = 0.0
 [bert]
 bert_model = "bert-large-cased"
 
+[chinese-roberta-base]
+bert_model = "hfl/chinese-roberta-wwm-ext"
+train_data = "data/chinese_train_head.jsonlines"
+dev_data = "data/chinese_development_head.jsonlines"
+test_data = "data/chinese_test_head.jsonlines"
+
+[chinese-roberta-large]
+bert_model = "hfl/chinese-roberta-wwm-ext-large"
+train_data = "data/chinese_train_head.jsonlines"
+dev_data = "data/chinese_development_head.jsonlines"
+test_data = "data/chinese_test_head.jsonlines"
+
+[ernie-3-base-zh]
+bert_model = "nghuyong/ernie-3.0-base-zh"
+train_data = "data/chinese_train_head.jsonlines"
+dev_data = "data/chinese_development_head.jsonlines"
+test_data = "data/chinese_test_head.jsonlines"
+
+[chinese-lert-base]
+bert_model = "hfl/chinese-lert-base"
+train_data = "data/chinese_train_head.jsonlines"
+dev_data = "data/chinese_development_head.jsonlines"
+test_data = "data/chinese_test_head.jsonlines"
+
+[chinese-lert-large]
+bert_model = "hfl/chinese-lert-large"
+train_data = "data/chinese_train_head.jsonlines"
+dev_data = "data/chinese_development_head.jsonlines"
+test_data = "data/chinese_test_head.jsonlines"
+
+
 [longformer]
 bert_model = "allenai/longformer-large-4096"
 bert_window_size = 2048

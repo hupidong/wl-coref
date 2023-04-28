@@ -40,8 +40,8 @@ def seed(value: int) -> None:
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
-    argparser.add_argument("mode", choices=("train", "eval"))
-    argparser.add_argument("experiment")
+    argparser.add_argument("--mode", choices=("train", "eval"))
+    argparser.add_argument("--experiment")
     argparser.add_argument("--config-file", default="config.toml")
     argparser.add_argument("--data-split", choices=("train", "dev", "test"),
                            default="test",

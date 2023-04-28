@@ -40,8 +40,12 @@ You will need:
         python -m pip install -r requirements.txt
 6. Build the corpus in jsonlines format (~20 min):
 
-        python convert_to_jsonlines.py data/conll-2012/ --out-dir data
-        python convert_to_heads.py
+        python convert_to_jsonlines.py --conll-dir=data/conll-2012/ --out-dir=data --lang=english
+        python convert_to_heads.py --lang=english
+   for chinese:
+
+        python convert_to_jsonlines.py --conll-dir=data/conll-2012/ --out-dir=data --lang=chinese
+        python convert_to_heads.py --lang=chinese
 
 You're all set!
 
@@ -49,7 +53,11 @@ You're all set!
 
 If you have completed all the steps in the previous section, then just run:
 
-    python run.py train roberta
+    python run.py --mode=train --experiment=roberta
+   
+   for chinese:
+
+    python run.py --mode=train --experiment=chinese-roberta-base
 
 Use `-h` flag for more parameters and `CUDA_VISIBLE_DEVICES` environment variable to limit the cuda devices visible to the script. Refer to `config.toml` to modify existing model configurations or create your own.
 
@@ -63,7 +71,7 @@ Make sure that you have successfully completed all steps of the [Preparation](#p
 
 2. Generate the conll-formatted output:
 
-        python run.py eval roberta --data-split test
+        python run.py --mode=eval --experiment=roberta --data-split=test
 
 3. Run the conll-2012 scripts to obtain the metrics:
 
@@ -99,7 +107,7 @@ You can check [a sample input file](sample_input.jsonlines) for reference.
 
 Then run:
 
-        python predict.py roberta input.jsonlines output.jsonlines
+        python predict.py chinese-roberta-base sample_input_chinese.jsonlines output_chinese-roberta-base.jsonlines
 
 This will utilize the latest weights available in the data directory for the chosen configuration. To load other weights, use the `--weights` argument.
 

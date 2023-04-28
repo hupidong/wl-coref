@@ -30,12 +30,16 @@ def get_subwords_batches(doc: Doc,
 
     while end < len(subwords):
         end = min(end + batch_size, len(subwords))
+        end_init = end
 
         # Move back till we hit a sentence end
         if end < len(subwords):
             sent_id = doc["sent_id"][doc["word_id"][end]]
             while end and doc["sent_id"][doc["word_id"][end - 1]] == sent_id:
                 end -= 1
+            # 如果一个句子很长，其token数量可能会超过batch_size，需要特别处理
+            if end == start:
+                end = end_init
 
         length = end - start
         batch = [tok.cls_token] + subwords[start:end] + [tok.sep_token]

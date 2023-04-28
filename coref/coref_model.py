@@ -7,12 +7,12 @@ import random
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-import numpy as np      # type: ignore
-import jsonlines        # type: ignore
+import numpy as np  # type: ignore
+import jsonlines  # type: ignore
 import toml
 import torch
-from tqdm import tqdm   # type: ignore
-import transformers     # type: ignore
+from tqdm import tqdm  # type: ignore
+import transformers  # type: ignore
 
 from coref import bert, conll, utils
 from coref.anaphoricity_scorer import AnaphoricityScorer
@@ -48,6 +48,7 @@ class CorefModel:  # pylint: disable=too-many-instance-attributes
         a_scorer (AnaphoricityScorer)
         sp (SpanPredictor)
     """
+
     def __init__(self,
                  config_path: str,
                  section: str,
@@ -109,7 +110,7 @@ class CorefModel:  # pylint: disable=too-many-instance-attributes
         with conll.open_(self.config, self.epochs_trained, data_split) \
                 as (gold_f, pred_f):
             pbar = tqdm(docs, unit="docs", ncols=0)
-            for doc in pbar:
+            for doc_ind, doc in enumerate(pbar):
                 res = self.run(doc)
 
                 running_loss += self._coref_criterion(res.coref_scores, res.coref_y).item()
@@ -156,7 +157,7 @@ class CorefModel:  # pylint: disable=too-many-instance-attributes
                 )
             print()
 
-        return (running_loss / len(docs), *s_checker.total_lea)
+        return (running_loss / len(docs), w_checker.total_lea, s_checker.total_lea)
 
     def load_weights(self,
                      path: Optional[str] = None,
@@ -281,7 +282,7 @@ class CorefModel:  # pylint: disable=too-many-instance-attributes
         docs = list(self._get_docs(self.config.train_data))
         docs_ids = list(range(len(docs)))
         avg_spans = sum(len(doc["head2span"]) for doc in docs) / len(docs)
-
+        best_f1 = 0
         for epoch in range(self.epochs_trained, self.config.train_epochs):
             self.training = True
             running_c_loss = 0.0
@@ -324,8 +325,12 @@ class CorefModel:  # pylint: disable=too-many-instance-attributes
                 )
 
             self.epochs_trained += 1
-            self.save_weights()
-            self.evaluate()
+            metrics = self.evaluate()
+            f1 = (metrics[1][0] + metrics[1][0]) / 2
+            if f1 >= best_f1:
+                best_f1 = f1
+                self.save_weights()
+        self.save_weights()
 
     # ========================================================= Private methods
 
@@ -348,10 +353,9 @@ class CorefModel:  # pylint: disable=too-many-instance-attributes
         attention_mask = (subwords_batches != self.tokenizer.pad_token_id)
         out, _ = self.bert(
             subwords_batches_tensor,
-            attention_mask=torch.tensor(
-                attention_mask, device=self.config.device))
+            attention_mask=torch.tensor(attention_mask, device=self.config.device),
+            return_dict=False)
         del _
-
         # [n_subwords, bert_emb]
         return out[subword_mask_tensor]
 
@@ -384,7 +388,7 @@ class CorefModel:  # pylint: disable=too-many-instance-attributes
             param.requires_grad = self.config.bert_finetune
 
         if self.config.bert_finetune:
-            self.optimizers["bert_optimizer"] = torch.optim.Adam(
+            self.optimizers["bert_optimizer"] = torch.optim.AdamW(
                 self.bert.parameters(), lr=self.config.bert_learning_rate
             )
             self.schedulers["bert_scheduler"] = \
@@ -435,12 +439,12 @@ class CorefModel:  # pylint: disable=too-many-instance-attributes
                 clusters.append(sorted(cluster))
         return sorted(clusters)
 
-    def _get_docs(self, path: str) -> List[Doc]:
+    def _get_docs(self, path: str, use_cache=False) -> List[Doc]:
         if path not in self._docs:
             basename = os.path.basename(path)
             model_name = self.config.bert_model.replace("/", "_")
             cache_filename = f"{model_name}_{basename}.pickle"
-            if os.path.exists(cache_filename):
+            if os.path.exists(cache_filename) and use_cache:
                 with open(cache_filename, mode="rb") as cache_f:
                     self._docs[path] = pickle.load(cache_f)
             else:
@@ -468,9 +472,9 @@ class CorefModel:  # pylint: disable=too-many-instance-attributes
                 containing 1 at position [i, j] if i-th and j-th words corefer.
         """
         y = cluster_ids[top_indices] * valid_pair_map  # [n_words, n_ants]
-        y[y == 0] = -1                                 # -1 for non-gold words
-        y = utils.add_dummy(y)                         # [n_words, n_cands + 1]
-        y = (y == cluster_ids.unsqueeze(1))            # True if coreferent
+        y[y == 0] = -1  # -1 for non-gold words
+        y = utils.add_dummy(y)  # [n_words, n_cands + 1]
+        y = (y == cluster_ids.unsqueeze(1))  # True if coreferent
         # For all rows with no gold antecedents setting dummy to True
         y[y.sum(dim=1) == 0, 0] = True
         return y.to(torch.float)
@@ -501,7 +505,7 @@ class CorefModel:  # pylint: disable=too-many-instance-attributes
         with jsonlines.open(path, mode="r") as data_f:
             for doc in data_f:
                 doc["span_clusters"] = [[tuple(mention) for mention in cluster]
-                                   for cluster in doc["span_clusters"]]
+                                        for cluster in doc["span_clusters"]]
                 word2subword = []
                 subwords = []
                 word_id = []
