@@ -146,6 +146,93 @@ dev_data = "data/chinese_development_head.jsonlines"
 test_data = "data/chinese_test_head.jsonlines"
 
 
+[bert-base-chinese]
+bert_model = "bert-base-chinese"
+train_data = "data/chinese_train_head.jsonlines"
+dev_data = "data/chinese_development_head.jsonlines"
+test_data = "data/chinese_test_head.jsonlines"
+
+[chinese-roberta-base]
+bert_model = "hfl/chinese-roberta-wwm-ext"
+#train_data = "data/chinese_train_head.jsonlines"
+#dev_data = "data/chinese_development_head.jsonlines"
+#test_data = "data/chinese_test_head.jsonlines"
+train_data = "F:\\Work\\kg\\coref\\v3\\train.jsonl"
+dev_data = "F:\\Work\\kg\\coref\\v3\\dev.jsonl"
+test_data = "F:\\Work\\kg\\coref\\v3\\dev.jsonl"
+
+[chinese-roberta-large]
+bert_model = "hfl/chinese-roberta-wwm-ext-large"
+#train_data = "data/chinese_train_head.jsonlines"
+#dev_data = "data/chinese_development_head.jsonlines"
+#test_data = "data/chinese_test_head.jsonlines"
+train_data = "F:\\Work\\kg\\coref\\v3\\train.jsonl"
+dev_data = "F:\\Work\\kg\\coref\\v3\\dev.jsonl"
+test_data = "F:\\Work\\kg\\coref\\v3\\dev.jsonl"
+
+[ernie-3-xbase-zh]
+bert_model = "nghuyong/ernie-3.0-xbase-zh"
+a_scoring_batch_size = 50
+#train_data = "F:\\Work\\kg\\coref\\v3\\train.jsonl"
+#dev_data = "F:\\Work\\kg\\coref\\v3\\dev.jsonl"
+#test_data = "F:\\Work\\kg\\coref\\v3\\dev.jsonl"
+train_data = "F:\\Work\\kg\\coref\\v4\\train_merge.jsonl"
+dev_data = "F:\\Work\\kg\\coref\\v4\\dev_merge.jsonl"
+test_data = "F:\\Work\\kg\\coref\\v4\\dev_merge.jsonl"
+
+[ernie-3-xbase-zh-token-level]
+bert_model = "nghuyong/ernie-3.0-xbase-zh"
+train_data = "F:\\Work\\kg\\coref\\v5\\train_iwencai_token_level.jsonl"
+dev_data = "F:\\Work\\kg\\coref\\v5\\dev_iwencai_token_level.jsonl"
+test_data = "F:\\Work\\kg\\coref\\v5\\dev_iwencai_token_level.jsonl"
+
+[ernie-3-base-zh]
+bert_model = "nghuyong/ernie-3.0-base-zh"
+#a_scoring_batch_size = 50
+#train_data = "F:\\Work\\kg\\coref\\v3\\train.jsonl"
+#dev_data = "F:\\Work\\kg\\coref\\v3\\dev.jsonl"
+#test_data = "F:\\Work\\kg\\coref\\v3\\dev.jsonl"
+train_data = "F:\\Work\\kg\\coref\\v4\\train_merge.jsonl"
+dev_data = "F:\\Work\\kg\\coref\\v4\\dev_merge.jsonl"
+test_data = "F:\\Work\\kg\\coref\\v4\\dev_merge.jsonl"
+
+[chinese-lert-base]
+bert_model = "hfl/chinese-lert-base"
+train_epochs = 30
+#train_data = "F:\\Work\\kg\\coref\\v3\\train.jsonl"
+#dev_data = "F:\\Work\\kg\\coref\\v3\\dev.jsonl"
+#test_data = "F:\\Work\\kg\\coref\\v3\\dev.jsonl"
+train_data = "F:\\Work\\kg\\coref\\v5\\train.jsonl"
+dev_data = "F:\\Work\\kg\\coref\\v5\\train.jsonl"
+test_data = "F:\\Work\\kg\\coref\\v5\\train.jsonl"
+
+[chinese-lert-large]
+bert_model = "hfl/chinese-lert-large"
+#train_data = "data/chinese_train_head.jsonlines"
+#dev_data = "data/chinese_development_head.jsonlines"
+#test_data = "data/chinese_test_head.jsonlines"
+train_data = "F:\\Work\\kg\\coref\\v3\\train.jsonl"
+dev_data = "F:\\Work\\kg\\coref\\v3\\dev.jsonl"
+test_data = "F:\\Work\\kg\\coref\\v3\\dev.jsonl"
+
+[chinese-bert-wwm-ext]
+bert_model = "hfl/chinese-bert-wwm-ext"
+#train_data = "data/chinese_train_head.jsonlines"
+#dev_data = "data/chinese_development_head.jsonlines"
+#test_data = "data/chinese_test_head.jsonlines"
+train_data = "F:\\Work\\kg\\coref\\v3\\train.jsonl"
+dev_data = "F:\\Work\\kg\\coref\\v3\\dev.jsonl"
+test_data = "F:\\Work\\kg\\coref\\v3\\dev.jsonl"
+
+[mengzi-bert-base]
+bert_model = "Langboat/mengzi-bert-base"
+#train_data = "data/chinese_train_head.jsonlines"
+#dev_data = "data/chinese_development_head.jsonlines"
+#test_data = "data/chinese_test_head.jsonlines"
+train_data = "F:\\Work\\kg\\coref\\v3\\train.jsonl"
+dev_data = "F:\\Work\\kg\\coref\\v3\\dev.jsonl"
+test_data = "F:\\Work\\kg\\coref\\v3\\dev.jsonl"
+
 [longformer]
 bert_model = "allenai/longformer-large-4096"
 bert_window_size = 2048
